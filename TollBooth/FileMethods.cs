@@ -1,25 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using CsvHelper;
-using Microsoft.Azure.WebJobs.Host;
+﻿using CsvHelper;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
 using TollBooth.Models;
 
 namespace TollBooth
 {
     internal class FileMethods
     {
-        private readonly CloudBlobClient _blobClient;
-        private readonly string _containerName = Environment.GetEnvironmentVariable("exportCsvContainerName");
-        private readonly string _blobStorageConnection = Environment.GetEnvironmentVariable("blobStorageConnection");
-        private readonly ILogger _log;
-
         public FileMethods(ILogger log)
         {
             _log = log;
@@ -57,8 +53,7 @@ namespace TollBooth
 
                         // Upload blob.
                         stream.Position = 0;
-                        // TODO 7: Asyncronously upload the blob from the memory stream.
-                        // COMPLETE: await blob...;
+                        await blob.UploadFromStreamAsync(stream);
 
                         successful = true;
                     }
@@ -72,6 +67,11 @@ namespace TollBooth
 
             return successful;
         }
+
+        private readonly CloudBlobClient _blobClient;
+        private readonly string _blobStorageConnection = Environment.GetEnvironmentVariable("blobStorageConnection");
+        private readonly string _containerName = Environment.GetEnvironmentVariable("exportCsvContainerName");
+        private readonly ILogger _log;
 
         /// <summary>
         /// Used for mapping from a LicensePlateDataDocument object to a LicensePlateData object.

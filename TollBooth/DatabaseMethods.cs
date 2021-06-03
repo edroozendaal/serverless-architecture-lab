@@ -1,25 +1,17 @@
-﻿using System;
+﻿using Microsoft.Azure.Documents.Client;
+using Microsoft.Extensions.Logging;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Extensions.Logging;
+
 using TollBooth.Models;
 
 namespace TollBooth
 {
     internal class DatabaseMethods
     {
-        private readonly string _endpointUrl = Environment.GetEnvironmentVariable("cosmosDBEndPointUrl");
-        private readonly string _authorizationKey = Environment.GetEnvironmentVariable("cosmosDBAuthorizationKey");
-        private readonly string _databaseId = Environment.GetEnvironmentVariable("cosmosDBDatabaseId");
-        private readonly string _collectionId = Environment.GetEnvironmentVariable("cosmosDBCollectionId");
-        private readonly ILogger _log;
-        // Reusable instance of DocumentClient which represents the connection to a Cosmos DB endpoint.
-        private DocumentClient _client;
-
         public DatabaseMethods(ILogger log)
         {
             _log = log;
@@ -38,11 +30,12 @@ namespace TollBooth
 
             using (_client = new DocumentClient(new Uri(_endpointUrl), _authorizationKey))
             {
-                // MaxItemCount value tells the document query to retrieve 100 documents at a time until all are returned.
-                // TODO 5: Retrieve a List of LicensePlateDataDocument objects from the collectionLink where the exported value is false.
-                // COMPLETE: licensePlates = _client.CreateDocumentQuery ...
-                // TODO 6: Remove the line below.
-                licensePlates = new List<LicensePlateDataDocument>();
+                // MaxItemCount value tells the document query to retrieve 100 documents at a time
+                // until all are returned.
+                licensePlates = _client.CreateDocumentQuery<LicensePlateDataDocument>(collectionLink,
+                    new FeedOptions() { EnableCrossPartitionQuery = true, MaxItemCount = 100 })
+                    .Where(l => l.exported == false)
+                    .ToList();
             }
 
             exportedCount = licensePlates.Count();
@@ -51,10 +44,9 @@ namespace TollBooth
         }
 
         /// <summary>
-        /// Updates license plate records (documents) as exported. Call after successfully
-        /// exporting the passed in license plates.
-        /// In a production environment, it would be best to create a stored procedure that
-        /// bulk updates the set of documents, vastly reducing the number of transactions.
+        /// Updates license plate records (documents) as exported. Call after successfully exporting
+        /// the passed in license plates. In a production environment, it would be best to create a
+        /// stored procedure that bulk updates the set of documents, vastly reducing the number of transactions.
         /// </summary>
         /// <param name="licensePlates"></param>
         /// <returns></returns>
@@ -76,5 +68,13 @@ namespace TollBooth
             }
         }
 
+        private readonly string _authorizationKey = Environment.GetEnvironmentVariable("cosmosDBAuthorizationKey");
+        private readonly string _collectionId = Environment.GetEnvironmentVariable("cosmosDBCollectionId");
+        private readonly string _databaseId = Environment.GetEnvironmentVariable("cosmosDBDatabaseId");
+        private readonly string _endpointUrl = Environment.GetEnvironmentVariable("cosmosDBEndPointUrl");
+        private readonly ILogger _log;
+
+        // Reusable instance of DocumentClient which represents the connection to a Cosmos DB endpoint.
+        private DocumentClient _client;
     }
 }
